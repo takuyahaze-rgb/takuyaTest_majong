@@ -50,145 +50,166 @@ else
     var turn = human.Turn;
     var call = human.Call;
 
-    <div class="board">
-        @* ───── 上部: 局・ドラ ───── *@
-        <header class="topbar">
-            <span class="round">@Wind(view.RoundWind)@(view.RoundNumber)局 @(view.Honba)本場</span>
-            <span>供託 @view.RiichiSticks</span>
-            <span>残り @view.WallRemaining</span>
-            <span class="dora">ドラ表示
-                @foreach (var d in view.DoraIndicators)
-                {
-                    <TileImage Tile="d" CssClass="small" />
-                }
-            </span>
-            <button class="link" @onclick="Session.Quit">やめる</button>
-        </header>
-
-        @* ───── 他家(下家・対面・上家)と自分の河 ───── *@
-        @foreach (int seat in new[] { 1, 2, 3, 0 })
-        {
-            var p = view.Players[seat];
-            <section class="player @(state.CurrentSeat == seat && Session.IsRunning ? "active" : "") @(seat == 0 ? "me" : "")">
-                <div class="phead">
-                    <span class="name">@GameSession.SeatNames[seat]</span>
-                    <span class="wind @(p.SeatWind == TileKind.East ? "dealer" : "")">@Wind(p.SeatWind)</span>
-                    <span class="score">@p.Score</span>
-                    @if (p.IsRiichi) { <span class="badge">リーチ</span> }
-                    <span class="pos">@SeatPosition(seat)</span>
-                </div>
-                <div class="river">
-                    @foreach (var d in p.River)
+    @* 16:9 の卓。中の大きさはすべて卓の高さ(cqh)を基準にして、端末の大きさに合わせて拡大・縮小する *@
+    <div class="viewport">
+        <div class="stage">
+            @* ───── 左上: ドラ表示牌・出来事 ───── *@
+            <div class="dora-panel">
+                <div class="panel-label">ドラ</div>
+                <div class="dora-tiles">
+                    @for (int i = 0; i < 5; i++)
                     {
-                        <TileImage Tile="d.Tile" CssClass="@($"small {(d.IsRiichiTile ? "riichi" : "")} {(d.IsCalled ? "called" : "")}")" />
+                        <TileImage Tile="@(i < view.DoraIndicators.Count ? view.DoraIndicators[i] : null)" CssClass="dora-tile" />
                     }
                 </div>
-                @if (p.Melds.Count > 0 && seat != 0)
+                <div class="log">
+                    @foreach (var msg in Session.Log) { <div>@msg</div> }
+                </div>
+            </div>
+            <button class="quit" @onclick="Session.Quit">やめる</button>
+
+            @* ───── 他家の手牌(裏向き)と副露。席ごとに卓の中心を軸に回転させる ───── *@
+            @foreach (int seat in new[] { 1, 2, 3 })
+            {
+                var p = view.Players[seat];
+                <div class="table-layer pos-@seat">
+                    <div class="opp-hand">
+                        <span class="opp-name">@GameSession.SeatNames[seat]</span>
+                        @for (int i = 0; i < p.ClosedTileCount; i++)
+                        {
+                            <TileImage CssClass="back-tile" />
+                        }
+                        @foreach (var m in p.Melds) { <MeldView Meld="m" TileClass="opp-meld-tile" /> }
+                    </div>
+                </div>
+            }
+
+            @* ───── 4 人の河 ───── *@
+            @for (int seat = 0; seat < 4; seat++)
+            {
+                var p = view.Players[seat];
+                <div class="table-layer pos-@seat">
+                    <div class="river">
+                        @foreach (var d in p.River)
+                        {
+                            <TileImage Tile="d.Tile" CssClass="@($"river-tile {(d.IsRiichiTile ? "riichi" : "")} {(d.IsCalled ? "called" : "")}")" />
+                        }
+                    </div>
+                </div>
+            }
+
+            @* ───── 中央: 局・残り枚数・各家の風と点数 ───── *@
+            <div class="center-panel">
+                @for (int seat = 0; seat < 4; seat++)
                 {
-                    <div class="melds">
-                        @foreach (var m in p.Melds) { <MeldView Meld="m" /> }
+                    var p = view.Players[seat];
+                    bool active = state.CurrentSeat == seat && Session.IsRunning;
+                    <div class="seat-info pos-@seat">
+                        <div class="seat-line @(active ? "active" : "")">
+                            @if (p.IsRiichi) { <span class="stick"></span> }
+                            <span class="wind @(p.SeatWind == TileKind.East ? "dealer" : "")">@Wind(p.SeatWind)</span>
+                            <span class="score">@p.Score</span>
+                        </div>
                     </div>
                 }
-            </section>
-        }
+                <div class="round-info">
+                    <div class="round">@Wind(view.RoundWind)@(view.RoundNumber)局</div>
+                    <div class="remain">残 @view.WallRemaining</div>
+                    <div class="sticks">@(view.Honba)本場 供託@(view.RiichiSticks)</div>
+                </div>
+            </div>
 
-        <div class="log">
-            @foreach (var msg in Session.Log) { <div>@msg</div> }
-        </div>
+            @* ───── 操作ボタン(右下) ───── *@
+            <div class="actions">
+                @if (call is not null)
+                {
+                    <div class="ask">
+                        @GameSession.SeatNames[call.FromSeat] の@(call.IsChankan ? "加槓" : "打牌")
+                        <TileImage Tile="call.Tile" CssClass="ask-tile" />
+                    </div>
+                    <div class="buttons">
+                        <button class="pass" @onclick="() => human.Submit(CallDecision.Pass)">パス</button>
+                        @foreach (var pair in call.ChiCandidates)
+                        {
+                            <button @onclick="() => human.Submit(CallDecision.Chi(pair))">
+                                チー
+                                @foreach (var t in pair) { <TileImage Tile="t" CssClass="btn-tile" /> }
+                            </button>
+                        }
+                        @if (call.CanDaiminkan) { <button @onclick="() => human.Submit(CallDecision.Daiminkan())">カン</button> }
+                        @if (call.CanPon) { <button @onclick="() => human.Submit(CallDecision.Pon())">ポン</button> }
+                        @if (call.CanRon)
+                        {
+                            <button class="win" @onclick="() => human.Submit(CallDecision.Ron)">ロン <small>@(call.RonScore!.Payment)</small></button>
+                        }
+                    </div>
+                }
+                else if (turn is not null)
+                {
+                    <div class="ask">
+                        @if (riichiMode) { <span>宣言する牌をタップ</span> }
+                        else if (view.IsRiichi) { <span>リーチ中</span> }
+                    </div>
+                    <div class="buttons">
+                        @if (turn.DrawnTile is Tile drawnTile && turn.Discards.Any(t => t.Id == drawnTile.Id) && !riichiMode)
+                        {
+                            <button class="pass" @onclick="() => Discard(drawnTile)">ツモ切り</button>
+                        }
+                        @if (turn.CanKyuushu)
+                        {
+                            <button @onclick="() => human.Submit(TurnAction.Kyuushu())">九種九牌</button>
+                        }
+                        @foreach (int k in turn.KakanKinds)
+                        {
+                            <button @onclick="() => human.Submit(TurnAction.Kakan(k))">加槓 @TileKinds.ToDisplay(k)</button>
+                        }
+                        @foreach (int k in turn.AnkanKinds)
+                        {
+                            <button @onclick="() => human.Submit(TurnAction.Ankan(k))">暗槓 @TileKinds.ToDisplay(k)</button>
+                        }
+                        @if (turn.CanRiichi)
+                        {
+                            <button class="riichi-btn @(riichiMode ? "on" : "")" @onclick="ToggleRiichi">@(riichiMode ? "取消" : "リーチ")</button>
+                        }
+                        @if (turn.CanTsumo)
+                        {
+                            <button class="win" @onclick="() => human.Submit(TurnAction.Tsumo())">ツモ <small>@(turn.TsumoScore!.Payment)</small></button>
+                        }
+                    </div>
+                }
+            </div>
 
-        @* ───── 操作 ───── *@
-        <div class="prompt">
-            @if (call is not null)
-            {
-                <div class="ask">
-                    @GameSession.SeatNames[call.FromSeat] の@(call.IsChankan ? "加槓" : "打牌")
-                    <TileImage Tile="call.Tile" CssClass="small" />
-                </div>
-                <div class="buttons">
-                    @if (call.CanRon)
-                    {
-                        <button class="win" @onclick="() => human.Submit(CallDecision.Ron)">ロン(@(call.RonScore!.Payment)点)</button>
-                    }
-                    @if (call.CanPon) { <button @onclick="() => human.Submit(CallDecision.Pon())">ポン</button> }
-                    @if (call.CanDaiminkan) { <button @onclick="() => human.Submit(CallDecision.Daiminkan())">カン</button> }
-                    @foreach (var pair in call.ChiCandidates)
-                    {
-                        <button @onclick="() => human.Submit(CallDecision.Chi(pair))">
-                            チー
-                            @foreach (var t in pair) { <TileImage Tile="t" CssClass="mini" /> }
-                        </button>
-                    }
-                    <button class="pass" @onclick="() => human.Submit(CallDecision.Pass)">パス</button>
-                </div>
-            }
-            else if (turn is not null)
-            {
-                <div class="ask">
-                    @if (riichiMode) { <span>リーチ: 宣言する牌をタップ</span> }
-                    else if (view.IsRiichi) { <span>リーチ中: ツモ切りしてください</span> }
-                    else { <span>あなたの番: 捨てる牌をタップ</span> }
-                </div>
-                <div class="buttons">
-                    @if (turn.CanTsumo)
-                    {
-                        <button class="win" @onclick="() => human.Submit(TurnAction.Tsumo())">ツモ(@(turn.TsumoScore!.Payment)点)</button>
-                    }
-                    @if (turn.CanRiichi)
-                    {
-                        <button class="@(riichiMode ? "on" : "")" @onclick="ToggleRiichi">@(riichiMode ? "リーチ取消" : "リーチ")</button>
-                    }
-                    @foreach (int k in turn.AnkanKinds)
-                    {
-                        <button @onclick="() => human.Submit(TurnAction.Ankan(k))">暗槓 @TileKinds.ToDisplay(k)</button>
-                    }
-                    @foreach (int k in turn.KakanKinds)
-                    {
-                        <button @onclick="() => human.Submit(TurnAction.Kakan(k))">加槓 @TileKinds.ToDisplay(k)</button>
-                    }
-                    @if (turn.CanKyuushu)
-                    {
-                        <button @onclick="() => human.Submit(TurnAction.Kyuushu())">九種九牌</button>
-                    }
-                    @if (turn.DrawnTile is Tile drawnTile && turn.Discards.Any(t => t.Id == drawnTile.Id) && !riichiMode)
-                    {
-                        <button class="pass" @onclick="() => Discard(drawnTile)">ツモ切り</button>
-                    }
-                </div>
-            }
-            else if (Session.IsRunning)
-            {
-                <div class="ask wait">@GameSession.SeatNames[state.CurrentSeat] の番です…</div>
-            }
-        </div>
-
-        @* ───── 手牌 ───── *@
-        <div class="hand">
+            @* ───── 自分の手牌(手前) ───── *@
             @{
                 var drawn = view.DrawnTile;
                 var display = view.Closed.Where(t => drawn is not Tile d || t.Id != d.Id)
                     .OrderBy(t => t.Kind).ThenBy(t => t.IsRed).ToList();
             }
-            @foreach (var t in display)
-            {
-                <TileImage Tile="t" CssClass="@HandClass(turn, t)" OnClick="() => TileTapped(t)" />
-            }
-            @if (drawn is Tile dt)
-            {
-                <span class="gap"></span>
-                <TileImage Tile="dt" CssClass="@HandClass(turn, dt)" OnClick="() => TileTapped(dt)" />
-            }
+            <div class="my-hand @(turn is not null ? "my-turn" : "")">
+                @foreach (var t in display)
+                {
+                    <TileImage Tile="t" CssClass="@HandClass(turn, t)" OnClick="() => TileTapped(t)" />
+                }
+                @if (drawn is Tile dt)
+                {
+                    <span class="draw-gap"></span>
+                    <TileImage Tile="dt" CssClass="@HandClass(turn, dt)" OnClick="() => TileTapped(dt)" />
+                }
+            </div>
             @if (view.Melds.Count > 0)
             {
-                <span class="gap"></span>
-                @foreach (var m in view.Melds) { <MeldView Meld="m" Small="false" /> }
+                <div class="my-melds">
+                    @foreach (var m in view.Melds) { <MeldView Meld="m" TileClass="my-meld-tile" /> }
+                </div>
+            }
+
+            @if (Session.Error is not null)
+            {
+                <pre class="error">エラーが発生しました:
+@Session.Error</pre>
             }
         </div>
-
-        @if (Session.Error is not null)
-        {
-            <pre class="error">エラーが発生しました:
-@Session.Error</pre>
-        }
+        <div class="rotate-hint">端末を横向きにすると遊びやすくなります</div>
     </div>
 
     @* ───── 局の結果 ───── *@
@@ -284,7 +305,23 @@ else
         // URL で ?seed=N を指定すると、そのシードを入れておく。&start=1 で自動的に対局を始める
         var query = System.Web.HttpUtility.ParseQueryString(new Uri(Nav.Uri).Query);
         if (int.TryParse(query["seed"], out int seed)) seedText = seed.ToString();
+        // 画面確認用: &auto=N で最初の N 回の打牌を自動でツモ切りし、鳴きはパスする
+        if (int.TryParse(query["auto"], out int auto)) autoDiscards = auto;
         if (query["start"] == "1" && Session.Engine is null) Start();
+    }
+
+    private int autoDiscards;
+
+    private void AutoPlayIfRequested()
+    {
+        if (autoDiscards <= 0 || Session.Human is not { } human) return;
+        if (human.Call is not null) { human.Submit(CallDecision.Pass); return; }
+        if (human.Turn is { } o)
+        {
+            autoDiscards--;
+            var tile = o.DrawnTile is Tile d && o.Discards.Any(t => t.Id == d.Id) ? d : o.Discards[^1];
+            human.Submit(TurnAction.Discard(tile));
+        }
     }
 
     public void Dispose() => Session.Changed -= OnSessionChanged;
@@ -297,6 +334,7 @@ else
             selectedId = null;
             riichiMode = false;
         }
+        AutoPlayIfRequested();
         InvokeAsync(StateHasChanged);
     }
 

@@ -5,12 +5,13 @@
     @for (int i = 0; i < Meld.Tiles.Count; i++)
     {
         bool back = Meld.Type == MeldType.Ankan && (i == 0 || i == Meld.Tiles.Count - 1);
-        <TileImage Tile="@(back ? null : Meld.Tiles[i])" CssClass="@(Small ? "small" : "meld-tile")" />
+        <TileImage Tile="@(back ? null : Meld.Tiles[i])" CssClass="@TileClass" />
     }
 </span>
 
 @code {
     [Parameter, EditorRequired] public Meld Meld { get; set; } = default!;
 
-    [Parameter] public bool Small { get; set; } = true;
+    /// <summary>牌に付ける CSS クラス(大きさの指定)。</summary>
+    [Parameter] public string TileClass { get; set; } = "small";
 }
