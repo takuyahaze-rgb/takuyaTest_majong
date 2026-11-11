@@ -67,6 +67,11 @@ else
                 </div>
             </div>
             <button class="quit" @onclick="Session.Quit">やめる</button>
+            <button class="quit fullscreen" @onclick="() => EnterFullscreenAsync(showNotice: true)">全画面</button>
+            @if (notice is not null)
+            {
+                <div class="notice" @onclick="() => notice = null">@notice</div>
+            }
 
             @* ───── 他家の手牌(裏向き)と副露。席ごとに卓の中心を軸に回転させる ───── *@
             @foreach (int seat in new[] { 1, 2, 3 })
@@ -307,7 +312,7 @@ else
         if (int.TryParse(query["seed"], out int seed)) seedText = seed.ToString();
         // 画面確認用: &auto=N で最初の N 回の打牌を自動でツモ切りし、鳴きはパスする
         if (int.TryParse(query["auto"], out int auto)) autoDiscards = auto;
-        if (query["start"] == "1" && Session.Engine is null) Start();
+        if (query["start"] == "1" && Session.Engine is null) StartGame(fromUser: false);
     }
 
     private int autoDiscards;
@@ -338,12 +343,52 @@ else
         InvokeAsync(StateHasChanged);
     }
 
-    private void Start()
+    private void Start() => StartGame(fromUser: true);
+
+    private void StartGame(bool fromUser)
     {
         selectedId = null;
         riichiMode = false;
         int? seed = int.TryParse(seedText, out int s) ? s : null;
+        // ボタンを押したときだけ全画面を試す(ブラウザは操作の直後にしか全画面を許さない)
+        if (fromUser) _ = EnterFullscreenAsync(showNotice: false);
         _ = Session.StartAsync(length, level, seed);
+    }
+
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+
+    private string? notice;   // 全画面にできなかったときの案内
+
+    /// <summary>
+    /// ブラウザの全画面表示(アドレスバーを消す)を試し、できれば横向きに固定する。
+    /// JavaScript は書かず、ブラウザ標準の関数を C# から直接呼び出す。
+    /// iPhone の Safari はウェブページの全画面表示に対応していないため失敗する。
+    /// </summary>
+    private async Task EnterFullscreenAsync(bool showNotice)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("document.documentElement.requestFullscreen");
+        }
+        catch (JSException)
+        {
+            if (showNotice)
+            {
+                notice = "この端末のブラウザは全画面表示に対応していません。" +
+                         "ホーム画面に追加して、そこから開くとアドレスバーなしで遊べます(タップで閉じる)";
+                StateHasChanged();
+            }
+            return;
+        }
+
+        try
+        {
+            await JS.InvokeVoidAsync("screen.orientation.lock", "landscape");
+        }
+        catch (JSException)
+        {
+            // 向きの固定に対応していない端末では何もしない
+        }
     }
 
     private void TileTapped(Tile t)

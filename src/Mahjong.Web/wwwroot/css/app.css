@@ -75,6 +75,7 @@ h1:focus { outline: none; }   /* Blazor が見出しに自動でフォーカス�
 /* ───── 卓(横向き 16:9) ─────
    .stage を「サイズのコンテナ」にして、中の大きさはすべて cqh(卓の高さの 1%)で指定する。
    卓の中心は (50cqw, 44cqh)。 */
+/* 画面に固定した枠。アドレスバーの出入りに合わせて、実際に見えている範囲の大きさになる */
 .viewport {
     position: fixed;
     inset: 0;
@@ -82,15 +83,15 @@ h1:focus { outline: none; }   /* Blazor が見出しに自動でフォーカス�
     align-items: center;
     justify-content: center;
     background: #0d2b1d;
+    overflow: hidden;
+    container-type: size;
 }
+/* 卓は枠(.viewport)の大きさを基準に、16:9 で収まる最大の大きさにする。
+   vh/dvh は端末によって見えている高さと一致しないため使わない */
 .stage {
     position: relative;
-    width: min(100vw, 177.78vh);
-    height: min(56.25vw, 100vh);
-    /* スマホではアドレスバーの分だけ見える高さが 100vh より低いので、
-       実際に見えている大きさ(dvw/dvh)を使う(対応していないブラウザは上の指定のまま) */
-    width: min(100dvw, 177.78dvh);
-    height: min(56.25dvw, 100dvh);
+    width: min(100cqw, 177.78cqh);
+    height: min(56.25cqw, 100cqh);
     container-type: size;
     overflow: hidden;
     font-size: 2.6cqh;
@@ -253,6 +254,22 @@ svg.tile.dora-tile { width: 3.6cqh; }
     top: 2cqh;
 }
 .stage button.quit { background: rgba(0, 0, 0, 0.35); color: var(--text); box-shadow: none; font-size: 2cqh; }
+.stage button.fullscreen { right: 14cqh; }
+
+/* 全画面にできなかったときの案内 */
+.notice {
+    position: absolute;
+    left: 50%;
+    top: 12cqh;
+    transform: translateX(-50%);
+    max-width: 90cqh;
+    padding: 1.2cqh 2.4cqh;
+    background: rgba(0, 0, 0, 0.8);
+    border-radius: 1.4cqh;
+    font-size: 2.2cqh;
+    text-align: center;
+    z-index: 5;
+}
 
 /* 自分の手牌(手前) */
 .my-hand {
