@@ -1,0 +1,16 @@
+@* 副露 1 組の表示。暗槓は両端を裏向きにする。 *@
+@using Mahjong.Core
+
+<span class="meld">
+    @for (int i = 0; i < Meld.Tiles.Count; i++)
+    {
+        bool back = Meld.Type == MeldType.Ankan && (i == 0 || i == Meld.Tiles.Count - 1);
+        <TileImage Tile="@(back ? null : Meld.Tiles[i])" CssClass="@(Small ? "small" : "meld-tile")" />
+    }
+</span>
+
+@code {
+    [Parameter, EditorRequired] public Meld Meld { get; set; } = default!;
+
+    [Parameter] public bool Small { get; set; } = true;
+}

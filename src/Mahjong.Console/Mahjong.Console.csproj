@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Mahjong.Engine\Mahjong.Engine.csproj" />
+    <ProjectReference Include="..\Mahjong.AI\Mahjong.AI.csproj" />
+    <ProjectReference Include="..\Mahjong.Core\Mahjong.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.0" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <!-- 名前空間を Mahjong.Console にすると System.Console と衝突するため変える -->
+    <RootNamespace>Mahjong.ConsoleApp</RootNamespace>
+  </PropertyGroup>
+
+</Project>
