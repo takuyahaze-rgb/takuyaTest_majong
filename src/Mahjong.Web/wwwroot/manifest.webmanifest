@@ -1,0 +1,13 @@
+{
+  "name": "麻雀",
+  "short_name": "麻雀",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#0d2b1d",
+  "theme_color": "#0d2b1d",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }
+  ]
+}

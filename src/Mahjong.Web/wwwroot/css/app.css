@@ -87,6 +87,10 @@ h1:focus { outline: none; }   /* Blazor が見出しに自動でフォーカス�
     position: relative;
     width: min(100vw, 177.78vh);
     height: min(56.25vw, 100vh);
+    /* スマホではアドレスバーの分だけ見える高さが 100vh より低いので、
+       実際に見えている大きさ(dvw/dvh)を使う(対応していないブラウザは上の指定のまま) */
+    width: min(100dvw, 177.78dvh);
+    height: min(56.25dvw, 100dvh);
     container-type: size;
     overflow: hidden;
     font-size: 2.6cqh;
